@@ -1,13 +1,14 @@
 # api/serializers.py
 import random
 from rest_framework import serializers
-from .models import AccountUser, CreatorProfile
+from .models import AccountUser, AttendeeProfile, CreatorProfile
 from django.core.mail import send_mail
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = AccountUser
-        fields = ('id', 'email', 'first_name', 'last_name', 'username', 'password', 'user_type', 'is_verified')
+        fields = ('id', 'email', 'first_name', 'last_name', 'username', 'password', 'user_type', 'is_verified', 'is_active', 'created_at', 'updated_at')
+
         extra_kwargs = {'password': {'write_only': True}}
         
     def create(self, validated_data):
@@ -22,7 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
         send_mail(
             'Eventure OTP',
             f'Your OTP is {otp}',
-            'eventureotp@gmail.com',
+            'testmaildjango27121995@gmail.com',
             [user.email],
             fail_silently=False,
         )
@@ -43,12 +44,51 @@ class VerifyOTPSerializer(serializers.Serializer):
         
         # Verify user and clear OTP
         user.is_verified = True
+        user.is_active = True
         user.otp = None  # Clear OTP after verification
         user.save()
         return attrs
 
 class CreatorProfileSerializer(serializers.ModelSerializer):
-    user_email = serializers.EmailField(source='user.email', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name=serializers.CharField(source='user.first_name',required=False)
+    last_name=serializers.CharField(source='user.last_name',required=False)
+    document_copy = serializers.FileField(required=False)   
     class Meta:
         model = CreatorProfile
-        fields = ['user_email', 'phone_number', 'organisation_name', 'organisation_address', 'document_copy','is_verified']
+        fields = ['id', 'email', 'first_name','last_name','phone_number', 'organisation_name', 'organisation_address', 'document_copy','is_verified', 'is_setup_submitted']
+    def update(self, instance, validated_data):
+        
+        user_data = validated_data.pop('user', {})
+        for attr, value in user_data.items():
+            setattr(instance.user, attr, value)
+        
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.user.save()
+        instance.save()
+        return instance
+   
+    
+class AttendeeProfileSerializer(serializers.ModelSerializer):
+    email=serializers.EmailField(source='user.email', read_only=True)
+    first_name=serializers.CharField(source='user.first_name',required=False)
+    last_name=serializers.CharField(source='user.last_name',required=False)
+    class Meta:
+        model = AttendeeProfile
+        fields = ['email', 'first_name', 'last_name', 'phone_number', 'birthday', 'address']
+    def update(self, instance, validated_data):
+        # Update user fields (first_name, last_name)
+        user_data = validated_data.pop('user', {})
+        for attr, value in user_data.items():
+            setattr(instance.user, attr, value)
+        
+         # Update AttendeeProfile fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.user.save()
+        instance.save()
+        return instance
