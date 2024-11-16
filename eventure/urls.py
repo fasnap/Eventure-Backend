@@ -24,6 +24,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/admin_panel/', include('admin_panel.urls')),
     path('api/user/', include('authentication.urls')),
+    # path('api/events/', include('events.urls')),
     path('dj-rest-auth/google/', GoogleLogin.as_view(), name='google_login')
 
     # Google authentication URLs
