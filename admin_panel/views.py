@@ -1,4 +1,3 @@
-from unittest.util import sorted_list_difference
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -10,6 +9,9 @@ from authentication.models import AccountUser, CreatorProfile
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
+
+from events.models import Event
+from events.serializers import EventSerializer
 
 # Create your views here.
 class AdminLoginView(APIView):
@@ -112,3 +114,41 @@ class BlockUnblockUserView(APIView):
             return Response({'message':'User status updated'}, status=status.HTTP_200_OK)
         except AccountUser.DoesNotExist:
             return Response({'error':'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+class EventsListView(APIView):
+    permission_classes=[IsAdminUser]
+    def get(self,request):
+        events=Event.objects.all().order_by('-created_at')
+        serializer=EventSerializer(events, many=True)
+        return Response(serializer.data)    
+                               
+class EventApprovalView(APIView):
+    permission_classes=[IsAdminUser]
+    
+    def post(self, request, event_id):
+        try:
+            event=Event.objects.get(pk=event_id)
+            event.is_approved=True
+            event.save()
+            return Response({'message':'Event approved'}, status=status.HTTP_200_OK)
+        except Event.DoesNotExist:
+            return Response({'error':'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+
+class EventRejectView(APIView):
+    permission_classes=[IsAdminUser]
+    
+    def post(self, request, event_id):
+        try:
+            event=Event.objects.get(pk=event_id)
+            event.is_approved=False
+            event.save()
+            return Response({'message':'Event rejected'}, status=status.HTTP_200_OK)
+        except Event.DoesNotExist:
+            return Response({'error':'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+class ApprovedEventsListView(APIView):
+    permission_classes=[IsAdminUser]
+    def get(self, request):
+        events=Event.objects.filter(is_approved=True)
+        serializer=EventSerializer(events, many=True)
+        return Response(serializer.data)

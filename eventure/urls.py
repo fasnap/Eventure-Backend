@@ -19,16 +19,11 @@ from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 
-from authentication.views import GoogleLogin
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/admin_panel/', include('admin_panel.urls')),
     path('api/user/', include('authentication.urls')),
-    # path('api/events/', include('events.urls')),
-    path('dj-rest-auth/google/', GoogleLogin.as_view(), name='google_login')
-
-    # Google authentication URLs
-    # path('api/user/google-auth/', include('social_django.urls', namespace='social')),
+    path('api/events/', include('events.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root = settings.MEDIA_ROOT)
