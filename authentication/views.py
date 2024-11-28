@@ -11,6 +11,54 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.core.mail import send_mail
 
+from google.auth.transport.requests import Request
+from google.oauth2 import id_token
+from decouple import config
+
+class GoogleAuthView(APIView):
+    def post(self, request):
+        """
+        Handles Google Login
+        """
+        token = request.data.get("token")
+        user_type = request.data.get("user_type")
+        
+        if not token:
+            return Response({"error": "Token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user_type not in ["attendee", "creator"]:
+            return Response({"error": "Invalid user type."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Verify the Google token
+            idinfo = id_token.verify_oauth2_token(token, Request(), config('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY'))
+            email = idinfo.get("email")
+            first_name = idinfo.get("given_name")
+            last_name = idinfo.get("family_name")
+
+            # Check if the user already exists
+            user, created = AccountUser.objects.get_or_create(email=email, defaults={
+                'username': email,
+                'first_name': first_name,
+                'last_name': last_name,
+                'is_verified': True,
+                'user_type': user_type,
+                'is_active': True
+            })
+
+            # Generate tokens
+            refresh = RefreshToken.for_user(user)
+
+            return Response({
+                'email': user.email,
+                'username': user.email,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            }, status=status.HTTP_200_OK)
+
+        except ValueError as e:
+            return Response({"error": "Invalid Google token."}, status=status.HTTP_400_BAD_REQUEST)
+        
 class UserCreate(APIView):
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -129,7 +177,7 @@ class ForgotPasswordRequestView(APIView):
             send_mail(
                 'Password Reset OTP',
                 f'Your OTP for password reset is {otp}',
-                'testmaildjango27121995@gmail.com',  # Replace with your email
+                config('EMAIL_HOST_USER'),  # Replace with your email
                 [user.email],
                 fail_silently=False,
             )

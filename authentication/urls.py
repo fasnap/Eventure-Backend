@@ -1,12 +1,14 @@
 # api/urls.py
 from django.urls import path
-from .views import AttendeeProfileView, ForgotPasswordRequestView, LogoutView, ResetPasswordView, UserCreate, VerifyOTPView, LoginView, CreatorAccountSetupView, VerifyOtpViewForgotPassword
+from .views import AttendeeProfileView, ForgotPasswordRequestView, LogoutView, ResetPasswordView, UserCreate, VerifyOTPView, LoginView, CreatorAccountSetupView, VerifyOtpViewForgotPassword, GoogleAuthView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
     path('register/', UserCreate.as_view(), name='user-register'),
     path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
     path('login/', LoginView.as_view(), name='user-login'),  # Added login URL
+    
+    path('google-auth/', GoogleAuthView.as_view(), name='google-auth'),
     
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

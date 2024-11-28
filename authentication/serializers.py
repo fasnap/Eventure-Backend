@@ -3,6 +3,7 @@ import random
 from rest_framework import serializers
 from .models import AccountUser, AttendeeProfile, CreatorProfile
 from django.core.mail import send_mail
+from decouple import config
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,6 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'first_name', 'last_name', 'username', 'password', 'user_type', 'is_verified', 'is_active', 'created_at', 'updated_at')
 
         extra_kwargs = {'password': {'write_only': True}}
+
         
     def create(self, validated_data):
         user = AccountUser.objects.create_user(**validated_data)
@@ -20,10 +22,12 @@ class UserSerializer(serializers.ModelSerializer):
         otp = random.randint(100000, 999999)
         user.otp = otp
         user.save()
+        print("otp",otp)
+        # Call Celery task to send OTP email
         send_mail(
             'Eventure OTP',
             f'Your OTP is {otp}',
-            'testmaildjango27121995@gmail.com',
+            config('EMAIL_HOST_USER'),
             [user.email],
             fail_silently=False,
         )
@@ -32,6 +36,7 @@ class UserSerializer(serializers.ModelSerializer):
 class VerifyOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.IntegerField()
+
 
     def validate(self, attrs):
         try:
