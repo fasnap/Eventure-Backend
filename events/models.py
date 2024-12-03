@@ -36,16 +36,11 @@ class Event(BaseModel):
     country=models.CharField(max_length=50)
     state=models.CharField(max_length=50)
     district=models.CharField(max_length=50)
-    # google_map_link=models.URLField(blank=True, null=True)
-    
-    # Geolocation fields for offline events
-    # latitude=models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    # longitude=models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
-    
-    # Streaming specific fields for online events
-    # is_streaming=models.BooleanField(default=False)
-    # created_streaming_sessions=models.BooleanField(default=False)
-    
+  
+    location = models.CharField(max_length=255, null=True, blank=True)
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
+
     is_created=models.BooleanField(default=False)
     is_approved=models.BooleanField(default=False)
     

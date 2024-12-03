@@ -4,6 +4,8 @@ from rest_framework import serializers
 from .models import AccountUser, AttendeeProfile, CreatorProfile
 from django.core.mail import send_mail
 from decouple import config
+from .tasks import send_otp_email 
+from django.conf import settings
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,15 +24,10 @@ class UserSerializer(serializers.ModelSerializer):
         otp = random.randint(100000, 999999)
         user.otp = otp
         user.save()
-        print("otp",otp)
+        subject = "OTP for Registration"
+        message = "Your OTP for registration is "
         # Call Celery task to send OTP email
-        send_mail(
-            'Eventure OTP',
-            f'Your OTP is {otp}',
-            config('EMAIL_HOST_USER'),
-            [user.email],
-            fail_silently=False,
-        )
+        send_otp_email.delay(user.email, otp, subject, message) 
         return user
 
 class VerifyOTPSerializer(serializers.Serializer):

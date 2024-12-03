@@ -15,13 +15,16 @@ class EventCreateView(APIView):
     
         user=request.user
         if not user.creatorprofile.is_verified:
-            
             raise ValueError("You must have a verified profile to create an event.")
-    
+       
+        print("data in view of event ", request.data)
         serializer = EventSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save(creator=user, is_created=True)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            print("Serializer validation errors:", serializer.errors)  # This will show the validation errors.
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class EventCategoryView(APIView):
@@ -29,7 +32,7 @@ class EventCategoryView(APIView):
     def get(self,request):
         categories=Event.EVENT_CATEGORY_CHOICES
         data=[{"value":value, "label":label} for value,label in categories]
-        print(data)
+     
         return Response(data)
     
 class AttendeeEventsListView(APIView):
@@ -80,3 +83,14 @@ class AttendeeEventsListView(APIView):
         serializer=EventSerializer(events, many=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class AttendeeSingleEventView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, event_id):
+        try:
+            event=Event.objects.get(id=event_id)
+            serializer=EventSerializer(event)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Event.DoesNotExist:
+            return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)

@@ -1,5 +1,6 @@
 # api/views.py
 import random
+from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -10,11 +11,12 @@ from .serializers import AttendeeProfileSerializer, UserSerializer, VerifyOTPSer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.core.mail import send_mail
+from datetime import timedelta
 
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 from decouple import config
-
+from .tasks import send_otp_email
 class GoogleAuthView(APIView):
     def post(self, request):
         """
@@ -88,7 +90,7 @@ class LoginView(APIView):
             # Check if the password is correct
             if user.check_password(password) and user.is_verified:
                 refresh = RefreshToken.for_user(user)
-
+            
                 return Response({
                     'email': user.email,
                     'username': user.username,
@@ -96,6 +98,7 @@ class LoginView(APIView):
                     'refreshToken': str(refresh),
                     'accessToken': str(refresh.access_token),
                 }, status=status.HTTP_200_OK)
+            
             else:
                 return Response({"error": "Invalid email or password."}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -128,6 +131,7 @@ class AttendeeProfileView(APIView):
 class CreatorAccountSetupView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+   
     def get(self, request):
         try:
             creator_profile = CreatorProfile.objects.get(user=request.user)
@@ -140,6 +144,10 @@ class CreatorAccountSetupView(APIView):
     def put(self, request):
         try:
             creator_profile=CreatorProfile.objects.get(user=request.user)
+            # Only allow the creator to modify their own profile or an admin
+            if creator_profile.user != request.user and not request.user.is_staff:
+                return Response({"error": "You do not have permission to edit this profile."}, status=status.HTTP_403_FORBIDDEN)
+            
             serializer=CreatorProfileSerializer(creator_profile, data=request.data)
             print("Uploaded document:", request.FILES.get('document_copy'))  # Debugging line to check if file is received
             if serializer.is_valid():
@@ -152,12 +160,26 @@ class CreatorAccountSetupView(APIView):
         except CreatorProfile.DoesNotExist:
             return Response({"error": "Creator profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
+class CreatorProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, id):
+        try:
+            creator_profile = CreatorProfile.objects.get(id=id)
+            serializer=CreatorProfileSerializer(creator_profile)
+            return Response(serializer.data)
+            
+        except CreatorProfile.DoesNotExist:
+            return Response({"error": "Creator profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
 class LogoutView(APIView):
     permission_classes=[IsAuthenticated]
     
     def post(self,request):
+        refresh_token=request.data.get('refresh_token')
+        if not refresh_token:
+            return Response({"error": "Refresh token is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
-            refresh_token=request.data.get('refresh_token')
             token=RefreshToken(refresh_token)
             token.blacklist()
             
@@ -173,14 +195,11 @@ class ForgotPasswordRequestView(APIView):
             otp=random.randint(100000,999999)
             user.otp=otp
             user.save()
-            print(f"Generated OTP: {otp}")
-            send_mail(
-                'Password Reset OTP',
-                f'Your OTP for password reset is {otp}',
-                config('EMAIL_HOST_USER'),  # Replace with your email
-                [user.email],
-                fail_silently=False,
-            )
+            subject = "OTP for Password Reset"
+            message = "Your OTP for password reset is "
+
+            send_otp_email.delay(user.email, otp, subject, message)  # Offload email sending to Celery task
+
             return Response({"message": "OTP sent to your email."}, status=status.HTTP_200_OK)
         
         except AccountUser.DoesNotExist:
