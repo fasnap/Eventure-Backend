@@ -1,6 +1,6 @@
 # api/urls.py
 from django.urls import path
-from .views import AdminLoginView, ApprovedCreatorsListView, BlockUnblockUserView, CreatorProfileApprovalView, CreatorProfileListView, CreatorProfileRejectView, EventsListView, UsersListView, EventApprovalView, EventRejectView
+from .views import AdminDashboardView, AdminLoginView, ApprovedCreatorsListView, BlockUnblockUserView, CreatorProfileApprovalView, CreatorProfileListView, CreatorProfileRejectView, EventsListView, UsersListView, EventApprovalView, EventRejectView
 
 urlpatterns = [
     path('login/', AdminLoginView.as_view(), name='admin-login'), 
@@ -16,4 +16,6 @@ urlpatterns = [
     path('event/approve/<int:event_id>/', EventApprovalView.as_view(), name='approve-event'),
     path('event/reject/<int:event_id>/', EventRejectView.as_view(), name='reject-event'),
     path('event/list/', EventsListView.as_view(), name='events-list'),
+    
+    path('dashboard/', AdminDashboardView.as_view(), name='dashboard')
 ]

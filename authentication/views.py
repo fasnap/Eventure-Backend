@@ -1,22 +1,21 @@
 # api/views.py
 import random
-from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import AccountUser, AttendeeProfile, CreatorProfile
 from .serializers import AttendeeProfileSerializer, UserSerializer, VerifyOTPSerializer, CreatorProfileSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.core.mail import send_mail
-from datetime import timedelta
-
+from events.models import Notification
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 from decouple import config
 from .tasks import send_otp_email
+
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 class GoogleAuthView(APIView):
     def post(self, request):
         """
@@ -35,25 +34,28 @@ class GoogleAuthView(APIView):
             # Verify the Google token
             idinfo = id_token.verify_oauth2_token(token, Request(), config('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY'))
             email = idinfo.get("email")
+            username = idinfo.get("username")
             first_name = idinfo.get("given_name")
             last_name = idinfo.get("family_name")
 
             # Check if the user already exists
             user, created = AccountUser.objects.get_or_create(email=email, defaults={
-                'username': email,
+                'username': username,
                 'first_name': first_name,
                 'last_name': last_name,
                 'is_verified': True,
                 'user_type': user_type,
                 'is_active': True
             })
-
+            if user.is_active ==False:
+                return Response({"error": "Account is inactive. Please contact support."}, status=status.HTTP_400_BAD_REQUEST)
             # Generate tokens
             refresh = RefreshToken.for_user(user)
-
+            print("user id is ", user.id)
             return Response({
+                'user_id': user.id,
                 'email': user.email,
-                'username': user.email,
+                'username': user.username,
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
             }, status=status.HTTP_200_OK)
@@ -90,8 +92,9 @@ class LoginView(APIView):
             # Check if the password is correct
             if user.check_password(password) and user.is_verified:
                 refresh = RefreshToken.for_user(user)
-            
+                print("user id is ", user.id)
                 return Response({
+                    'user_id': user.id,
                     'email': user.email,
                     'username': user.username,
                     'user_type': user.user_type,
@@ -122,9 +125,7 @@ class AttendeeProfileView(APIView):
                 serializer.save()
                 return Response({"message": "Attendee profile updated successfully."}, status=status.HTTP_200_OK)
             else:
-                print(serializer.errors)  
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except AttendeeProfile.DoesNotExist:
             return Response({"error": "Attendee profile not found."}, status=status.HTTP_404_NOT_FOUND)
         
@@ -143,17 +144,33 @@ class CreatorAccountSetupView(APIView):
         
     def put(self, request):
         try:
+            user=request.user
             creator_profile=CreatorProfile.objects.get(user=request.user)
             # Only allow the creator to modify their own profile or an admin
             if creator_profile.user != request.user and not request.user.is_staff:
                 return Response({"error": "You do not have permission to edit this profile."}, status=status.HTTP_403_FORBIDDEN)
             
             serializer=CreatorProfileSerializer(creator_profile, data=request.data)
-            print("Uploaded document:", request.FILES.get('document_copy'))  # Debugging line to check if file is received
             if serializer.is_valid():
                 serializer.save()
                 creator_profile.is_setup_submitted=True
                 creator_profile.save()
+                channel_layer = get_channel_layer()
+                message = f"New creator '{user.username}' is waiting for admin approval."
+                # Create a notification in the database for the admin
+                notification = Notification.objects.create(
+                    user_id=user.id,  # Assuming the admin has an `id`
+                    message=message
+                )
+            
+                async_to_sync(channel_layer.group_send)(
+                    'admin_notifications',  # The group name
+                    {
+                        'type': 'send_notification',
+                        'message': message,
+                        'notification_id': notification.id
+                    }
+                )
                 return Response({"message": "Account setup request sent to admin for verification."}, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         

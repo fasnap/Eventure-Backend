@@ -1,4 +1,4 @@
-# api/serializers.py
+# serializers.py
 import random
 from rest_framework import serializers
 from .models import AccountUser, AttendeeProfile, CreatorProfile
@@ -28,6 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
         message = "Your OTP for registration is "
         # Call Celery task to send OTP email
         send_otp_email.delay(user.email, otp, subject, message) 
+
         return user
 
 class VerifyOTPSerializer(serializers.Serializer):

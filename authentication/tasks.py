@@ -14,4 +14,6 @@ def send_otp_email(user_email, otp, subject, message):
         [user_email],
         fail_silently=False
     )
+
     return "OTP sent successfully"
+

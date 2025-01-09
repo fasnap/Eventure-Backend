@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
+from celery.schedules import crontab
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,12 +28,13 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -46,11 +49,16 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
     'storages',
-    'django.contrib.sites',  # Required by Allauth
+    'django.contrib.sites',  
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    'django_celery_results',
+    'django_celery_beat',
+    'channels',
+    'chat',
+    
 ]
 
 MIDDLEWARE = [
@@ -125,7 +133,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -200,6 +208,7 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
 SITE_ID = 1  
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
@@ -215,4 +224,32 @@ LOGOUT_REDIRECT_URL = '/'
 CELERY_BROKER_URL = 'redis://localhost:6379/0'  # URL for Redis (default host and port)
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'UTC'
+CELERY_TIMEZONE = 'Asia/Kolkata'
+
+RAZORPAY_KEY_ID=config('RAZORPAY_KEY_ID')
+RAZORPAY_KEY_SECRET=config('RAZORPAY_KEY_SECRET')
+
+CELERY_BEAT_SCHEDULE={
+    'send-email-reminders-daily':{
+        'task':'events.tasks.send_email_reminders',
+        'schedule':crontab(hour=23, minute=35)
+    }
+}
+
+# CELERY_BEAT_SCHEDULE={
+#     'send-email-reminders-daily':{
+#         'task':'events.tasks.send_email_reminders',
+#         'schedule':crontab(minute='*/1')
+#     }
+# }
+
+ASGI_APPLICATION = 'eventure.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND":"channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts":[("127.0.0.1", 6379)],
+        }
+    }
+}
