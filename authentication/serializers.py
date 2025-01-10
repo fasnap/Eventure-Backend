@@ -57,9 +57,11 @@ class CreatorProfileSerializer(serializers.ModelSerializer):
     first_name=serializers.CharField(source='user.first_name',required=False)
     last_name=serializers.CharField(source='user.last_name',required=False)
     document_copy = serializers.FileField(required=False)   
+    profile_picture = serializers.ImageField(required=False)
+
     class Meta:
         model = CreatorProfile
-        fields = ['id', 'email', 'first_name','last_name','phone_number', 'organisation_name', 'organisation_address', 'document_copy','is_verified', 'is_setup_submitted']
+        fields = ['id', 'email', 'first_name','last_name','phone_number', 'organisation_name', 'organisation_address', 'document_copy','is_verified', 'is_setup_submitted', 'profile_picture']
     def update(self, instance, validated_data):
         
         user_data = validated_data.pop('user', {})
@@ -79,6 +81,8 @@ class AttendeeProfileSerializer(serializers.ModelSerializer):
     email=serializers.EmailField(source='user.email', read_only=True)
     first_name=serializers.CharField(source='user.first_name',required=False)
     last_name=serializers.CharField(source='user.last_name',required=False)
+    # profile_picture = serializers.ImageField(required=False)
+
     class Meta:
         model = AttendeeProfile
         fields = ['email', 'first_name', 'last_name', 'phone_number', 'birthday', 'address']

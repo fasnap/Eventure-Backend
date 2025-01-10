@@ -24,7 +24,6 @@ urlpatterns = [
     path('api/admin_panel/', include('admin_panel.urls')),
     path('api/user/', include('authentication.urls')),
     path('api/events/', include('events.urls')),
-    path('api/chat/', include('chat.urls')),
     path('accounts/', include('allauth.urls')),  # This includes allauth's URLs
 
 ]

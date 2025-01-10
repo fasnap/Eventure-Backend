@@ -3,8 +3,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from chat.models import ChatGroup
-
 from .tasks import send_email_task
 from authentication.serializers import CreatorProfileSerializer, UserSerializer
 from .serializers import AdminLoginSerializer
@@ -143,11 +141,7 @@ class EventApprovalView(APIView):
             event.admin_status='approved'
             event.creator_status='upcoming'
             event.save()
-            chat_group_name=f"{event.title}-{event.id}"
-            chat_group=ChatGroup.objects.create(name=chat_group_name, event=event, owner=event.creator)
-            chat_group.members.add(event.creator)
-            chat_group.save()
-            return Response({'message':'Event approved and chat group created'}, status=status.HTTP_200_OK)
+            return Response({'message':'Event approved'}, status=status.HTTP_200_OK)
         except Event.DoesNotExist:
             return Response({'error':'Event not found'}, status=status.HTTP_404_NOT_FOUND)
 

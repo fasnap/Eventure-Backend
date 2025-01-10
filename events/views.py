@@ -5,7 +5,6 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 import uuid
-from chat.models import ChatGroup
 from .serializers import AttendanceSerializer,AttendeeEventsSerializer, EventRegistrationSerializer, EventSerializer, EventUserRegistrationSerializer, FeedbackSerializer, NotificationSerializer
 from rest_framework.response import Response
 from rest_framework import status
@@ -192,13 +191,7 @@ class RegisterForEventView(APIView):
                 # Decrement ticket count
                 event.total_tickets -= 1
                 event.save()
-                try:
-                    chat_group = event.chat_group 
-                    chat_group.members.add(request.user)
-                    chat_group.save() 
-                except ChatGroup.DoesNotExist:
-                    return Response({"error": "No chat group associated with this event."}, status=status.HTTP_404_NOT_FOUND)
-
+               
                 return Response({"message": "Successfully registered!"}, status=status.HTTP_201_CREATED)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -311,13 +304,7 @@ class RegisterPaidEventView(APIView):
             # Decrement ticket count
             event.total_tickets -= 1
             event.save()
-            try:
-                chat_group = event.chat_group 
-                chat_group.members.add(request.user)
-                chat_group.save() 
-            except ChatGroup.DoesNotExist:
-                return Response({"error": "No chat group associated with this event."}, status=status.HTTP_404_NOT_FOUND)
-
+       
             return Response({"message": "Successfully registered!"}, status=status.HTTP_201_CREATED)
 
         except Event.DoesNotExist:

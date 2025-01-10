@@ -18,6 +18,7 @@ class AccountUserManager(BaseUserManager):
         user=self.model(email=email, username=username, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
+
         return user
     def create_superuser(self, email, username, password=None, **extra_fields):
         extra_fields.setdefault('is_superuser', True)
@@ -57,7 +58,7 @@ class AttendeeProfile(BaseModel):
     phone_number=models.CharField(max_length=15, blank=True, null=True)
     birthday=models.DateField(blank=True, null=True)
     address=models.CharField(max_length=255, blank=True, null=True)
-    profile_picture=models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
+    # profile_picture=models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
     
     def __str__(self):
         return self.user.email
@@ -70,6 +71,7 @@ class CreatorProfile(BaseModel):
     document_copy=models.FileField(upload_to='document_copies/')
     is_verified=models.BooleanField(default=False)
     is_setup_submitted=models.BooleanField(default=False)
-   
+    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
+
     def __str__(self):
         return self.user.email

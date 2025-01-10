@@ -1,6 +1,6 @@
 # api/urls.py
 from django.urls import path
-from .views import AttendeeProfileView, ForgotPasswordRequestView, LogoutView, ResetPasswordView, UserCreate, VerifyOTPView, LoginView, CreatorAccountSetupView, VerifyOtpViewForgotPassword, GoogleAuthView, CreatorProfileView
+from .views import AttendeeProfileView, CreatorDetailsView, CreatorListView, ForgotPasswordRequestView, LogoutView, ResetPasswordView, UserCreate, VerifyOTPView, LoginView, CreatorAccountSetupView, VerifyOtpViewForgotPassword, GoogleAuthView, CreatorProfileView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -21,4 +21,7 @@ urlpatterns = [
     path('forgot-password/', ForgotPasswordRequestView.as_view(), name='forgot-password'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
     path('verify-otp-forgot-password/', VerifyOtpViewForgotPassword.as_view(), name='verify-otp-forgot-password'),
+    
+    path('creators-list/', CreatorListView.as_view(), name='creators-list'),
+    path('creator/<int:creator_id>/', CreatorDetailsView.as_view(), name='creator-detail')
 ]

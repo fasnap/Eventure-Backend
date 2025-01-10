@@ -4,6 +4,8 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from events.serializers import EventSerializer
 from .models import AccountUser, AttendeeProfile, CreatorProfile
 from .serializers import AttendeeProfileSerializer, UserSerializer, VerifyOTPSerializer, CreatorProfileSerializer
 from rest_framework.permissions import IsAuthenticated
@@ -13,7 +15,7 @@ from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 from decouple import config
 from .tasks import send_otp_email
-
+from events.models import Event
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 class GoogleAuthView(APIView):
@@ -247,6 +249,7 @@ class ResetPasswordView(APIView):
             return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
 
 class VerifyOtpViewForgotPassword(APIView):
+    
     def post(self, request):
         email = request.data.get("email")
         otp = request.data.get("otp")
@@ -259,3 +262,66 @@ class VerifyOtpViewForgotPassword(APIView):
                 return Response({"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
         except AccountUser.DoesNotExist:
             return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+
+class CreatorListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        creators=AccountUser.objects.filter(user_type='creator', creatorprofile__is_verified=True, is_verified=True, is_active=True)
+        creator_data=[]
+        for creator in creators:
+            profile=creator.creatorprofile
+           
+            event_count=Event.objects.filter(creator=creator, admin_status='approved', is_approved=True).count()
+            profile_picture_url = (
+                request.build_absolute_uri(profile.profile_picture.url)
+                if profile.profile_picture and profile.profile_picture.name
+                else None
+            )
+            creator_data.append({
+                "id":creator.id,
+                "username": creator.username,
+                "email": creator.email,
+                "organisation_name": profile.organisation_name,
+                "profile_picture": profile_picture_url,
+                "event_count": event_count,
+            })
+            print("creator data", creator_data)
+
+            return Response(creator_data, status=status.HTTP_200_OK)
+
+class CreatorDetailsView(APIView):
+    def get(self, request, creator_id):
+        try:
+            creator=AccountUser.objects.get(id=creator_id)
+            profile=creator.creatorprofile
+            completed_events=Event.objects.filter(creator=creator, creator_status='completed', admin_status='approved', is_approved=True)
+            total_completed_events= completed_events.count()
+            
+            ongoing_events=Event.objects.filter(creator=creator, creator_status='ongoing', admin_status='approved', is_approved=True)
+            total_ongoing_events= ongoing_events.count()
+            
+            upcoming_events=Event.objects.filter(creator=creator, creator_status='upcoming', admin_status='approved', is_approved=True)
+            total_upcoming_events= upcoming_events.count()
+            
+            events_data = EventSerializer(completed_events, many=True).data
+            profile_picture_url = (
+                request.build_absolute_uri(profile.profile_picture.url)
+                if profile.profile_picture and profile.profile_picture.name
+                else None
+            )
+            creator_data={
+                "id":creator_id,
+                "username": creator.username,
+                "email": creator.email,
+                "organisation_name": profile.organisation_name,
+                "profile_picture": profile_picture_url,
+                "events": events_data,
+                "total_completed_events":total_completed_events,
+                "total_ongoing_events": total_ongoing_events,
+                "total_upcoming_events": total_upcoming_events,
+                   
+            }
+            return Response(creator_data, status=status.HTTP_200_OK)
+        except AccountUser.DoesNotExist:
+            return Response({"error": "Creator not found."}, status=status.HTTP_404_NOT_FOUND)
