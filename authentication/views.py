@@ -83,9 +83,13 @@ class VerifyOTPView(APIView):
 
 
 class LoginView(APIView):
+    print("hii")
     def post(self, request):
+        print("hii1")
         email = request.data.get("email")
         password = request.data.get("password")
+        print("hii2")
+        print("email: ", email, "password: ", password)
         try:
             user = AccountUser.objects.get(email=email)
             if not user.is_active:

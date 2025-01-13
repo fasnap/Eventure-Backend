@@ -12,11 +12,14 @@ from django.core.asgi import get_asgi_application
 from django.urls import path
 from .middleware import TokenAuthMiddleware
 import events.routing
+import chatapp.routing
+from channels.auth import AuthMiddlewareStack
+
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": TokenAuthMiddleware(
         URLRouter(
-            events.routing.websocket_urlpatterns,
+            events.routing.websocket_urlpatterns + chatapp.routing.websocket_urlpatterns
         )
     ),
 })

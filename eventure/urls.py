@@ -25,7 +25,7 @@ urlpatterns = [
     path('api/user/', include('authentication.urls')),
     path('api/events/', include('events.urls')),
     path('accounts/', include('allauth.urls')),  # This includes allauth's URLs
-
+    path('api/chat/', include('chatapp.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root = settings.MEDIA_ROOT)
