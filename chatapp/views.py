@@ -1,9 +1,11 @@
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .models import ChatRoom, Message
 from .serializers import ChatRoomSerializer, MessageSerializer
+from rest_framework.parsers import MultiPartParser, FormParser
 
 class ChatRoomListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -30,7 +32,7 @@ class ChatMessagesView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
             messages=Message.objects.filter(chat_room=chat_room).order_by('timestamp')
-            serializer=MessageSerializer(messages, many=True)
+            serializer=MessageSerializer(messages, many=True, context={'request': request})
             return Response(serializer.data)
         except ChatRoom.DoesNotExist:
             return Response({"error": "Chat room not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -56,3 +58,4 @@ class CreateChatRoomView(APIView):
             )
         serializer = ChatRoomSerializer(chat_room)
         return Response(serializer.data)
+

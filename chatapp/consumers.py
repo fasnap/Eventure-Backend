@@ -3,6 +3,9 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from .models import ChatRoom, Message
 from authentication.models import AccountUser
+from django.core.files.base import ContentFile
+import base64
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -38,21 +41,30 @@ class ChatConsumer(AsyncWebsocketConsumer):
             
             if message_type == 'message':
                 message = text_data_json.get('message')
-                if not message:
-                    raise ValueError("Message content is required")
-                    
-                chat_message = await self.save_message(message)
+                media_data = text_data_json.get('media')
                 
+                if not message and not media_data:
+                    raise ValueError("Either message content or media is required")
+                
+                chat_message = await self.save_message(message, media_data)
+                response_data = {
+                    'type': 'chat_message',
+                    'message': message,
+                    'sender_id': self.user.id,
+                    'message_id': chat_message.id,
+                    'timestamp': chat_message.timestamp.isoformat(),
+                    'status':'sent'
+                }
+                if chat_message.media_file:
+                    response_data.update({
+                        'media_url': chat_message.media_file.url,
+                        'media_type': chat_message.media_type,
+                        'file_name':chat_message.file_name,
+                        'file_size': chat_message.file_size,
+                    })
                 await self.channel_layer.group_send(
                     self.room_group_name, 
-                    {
-                        'type': 'chat_message',
-                        'message': message,
-                        'sender_id': self.user.id,
-                        'message_id': chat_message.id,
-                        'timestamp': chat_message.timestamp.isoformat(),
-                        'status': 'sent'
-                    }
+                    response_data
                 )
            
             elif message_type == 'message_read':
@@ -96,26 +108,58 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message.save()
     
     async def chat_message(self, event):
-        await self.send(text_data=json.dumps({
-           'message': event['message'],
-           'sender_id': event['sender_id'],
-           'message_id': event['message_id'],
-           'timestamp': event['timestamp'],
-           'status': event['status'],
-           'sender': {
-               'id': self.user.id,
-               'username': self.user.username
-           }
-        }))
+        message_data={
+            'message': event['message'],
+            'sender_id': event['sender_id'],
+            'message_id': event['message_id'],
+            'timestamp': event['timestamp'],
+            'status': event['status'],
+            'sender': {
+                'id': self.user.id,
+                'username': self.user.username
+            }
+        }
+        if 'media_url' in event:
+            message_data.update({
+                'media_url': event['media_url'],
+                'media_type': event['media_type'],
+                'file_name': event['file_name'],
+                'file_size': event['file_size']
+            })
+        await self.send(text_data=json.dumps(message_data))
         
     @database_sync_to_async
-    def save_message(self, message):
+    def save_message(self, message, media_data=None):
         chat_room=ChatRoom.objects.get(id=self.room_id)
-        return Message.objects.create(
-            chat_room=chat_room,
-            sender=self.user,
-            content=message,
-        )
+        message_data={
+            'chat_room': chat_room,
+            'sender': self.user,
+            'content': message or ''
+        }
+        if media_data:
+            file_data = media_data['data']
+            file_name = media_data['fileName']
+            file_type = media_data['fileType']
+            if ';base64,' in file_data:
+                file_data = file_data.split(';base64,')[1]
+            
+             # Decode base64 data
+            file_content = ContentFile(base64.b64decode(file_data), name=file_name)
+            # Determine media type
+            if file_type.startswith('image/'):
+                media_type = 'image'
+            elif file_type.startswith('video/'):
+                media_type = 'video'
+            else:
+                media_type = 'file'
+            message_data.update({
+                'media_file': file_content,
+                'media_type': media_type,
+                'file_name': file_name,
+                'file_size': len(file_content)
+            })
+            
+        return Message.objects.create(**message_data)
         
     @database_sync_to_async
     def get_user_from_token(self, token):

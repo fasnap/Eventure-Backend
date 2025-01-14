@@ -27,7 +27,11 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     
 class MessageSerializer(serializers.ModelSerializer):
     sender=UserSerializer()
-    
+    media_url=serializers.SerializerMethodField()
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'content', 'timestamp', 'status']
+        fields = ['id', 'sender', 'content', 'timestamp', 'status', 'media_file', 'media_type', 'file_name', 'file_size', 'media_url']
+    def get_media_url(self, obj):
+        if obj.media_file:
+            return self.context['request'].build_absolute_uri(obj.media_file.url)
+        return None
