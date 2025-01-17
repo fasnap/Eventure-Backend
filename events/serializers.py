@@ -14,8 +14,8 @@ class EventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'creator', 'title', 'category', 'event_type', 'date', 'start_time', 'end_time', 'creator_status', 'admin_status',
             'description', 'image', 'venue', 'country', 'state', 'district', 'is_created', 'is_approved', 'ticket_type', 'price', 'total_tickets', 
-            'created_at', 'updated_at', 'latitude', 'longitude', 'location', 'meeting_link']
-        read_only_fields = ['creator']
+            'created_at', 'updated_at', 'latitude', 'longitude', 'location', 'meeting_link','is_streaming']
+        read_only_fields = ['creator','is_streaming']
     def validate(self, data):
         user = self.context['request'].user
         if not user.creatorprofile.is_verified:
@@ -31,8 +31,6 @@ class EventSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Venue should not be provided for online events.")
             if data.get('latitude') or data.get('longitude'):
                 raise serializers.ValidationError("Latitude and Longitude should not be provided for online events.")
-            if not data.get('meeting_link'):
-                raise serializers.ValidationError("Meeting link is required for online events.")
         if 'image' in data and not hasattr(data['image'], 'file'):
             raise serializers.ValidationError("Invalid image file format.")
         data['is_approved']=False
@@ -86,3 +84,11 @@ class FeedbackSerializer(serializers.ModelSerializer):
         fields = ['attendee','event','rating', 'comment', 'attendee_username']
         read_only_fields = ['attendee', 'event']
   
+class StreamingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = [
+            'id', 'is_streaming', 'stream_started_at', 'stream_ended_at',
+            'stream_key', 'viewer_count', 'stream_quality', 'enable_chat',
+            'enable_recording', 'stream_duration'
+        ]

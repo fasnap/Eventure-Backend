@@ -32,3 +32,4 @@ class Message(models.Model):
     file_size=models.IntegerField(null=True, blank=True)
     def __str__(self):
         return f"Message from {self.sender.username}  at {self.timestamp}"
+

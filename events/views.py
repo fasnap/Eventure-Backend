@@ -1,11 +1,17 @@
-from datetime import date
+import csv
+from datetime import datetime
 from functools import partial
+from reportlab.lib.pagesizes import letter
+from io import BytesIO
 from re import L
+from reportlab.pdfgen import canvas
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 import uuid
-from .serializers import AttendanceSerializer,AttendeeEventsSerializer, EventRegistrationSerializer, EventSerializer, EventUserRegistrationSerializer, FeedbackSerializer, NotificationSerializer
+
+import xlsxwriter
+from .serializers import AttendanceSerializer,AttendeeEventsSerializer, EventRegistrationSerializer, EventSerializer, EventUserRegistrationSerializer, FeedbackSerializer, NotificationSerializer, StreamingSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
@@ -18,9 +24,16 @@ from asgiref.sync import async_to_sync
 import razorpay
 import logging
 from rest_framework.decorators import api_view
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 import json
 from django.db.models import Count, Q
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+
+
 logger = logging.getLogger(__name__)
 
 class EventCreateView(APIView):
@@ -484,3 +497,312 @@ class AllFeedbackView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Event.DoesNotExist:
             return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+class EventReportView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        creator = request.user
+        events = Event.objects.filter(creator=creator)
+        
+        title = request.GET.get('title', '')
+        category = request.GET.get('category', '')
+        status = request.GET.get('status', '')
+        
+        # Filter
+        if title:
+            events = events.filter(title__icontains=title)
+        if category:
+            events = events.filter(category__icontains=category)
+        if status:
+            events = events.filter(creator_status=status)
+        
+        #Sorting
+        sort_by = request.GET.get('sort_by', 'date')
+        if sort_by:
+            events = events.order_by(sort_by)
+            
+        event_data = []
+        for event in events:
+            registered_count = EventRegistration.objects.filter(event=event).count()
+            attended_count = Attendance.objects.filter(event=event, is_present=True).count()
+            event_data.append({
+                'title': event.title,
+                'category': event.category,
+                'date': event.date,
+                'start_time': event.start_time,
+                'end_time': event.end_time,
+                'status': event.creator_status,
+                'ticket_type':event.ticket_type,
+                'price':event.price,
+                'registered_attendees':registered_count,
+                'attended_attendees': attended_count,
+            })
+        
+        return Response({'events': event_data})
+        
+    def export_to_csv(self, request):
+        creator=request.user
+        events=Event.objects.filter(creator=creator)
+        response=HttpResponse(content_type='text/csv')
+        response['Content-Disposition']='attachment; filename="event_report.csv"'
+        writer=csv.writer(response)
+        writer.writerow(['Title', 'Category', 'Date', 'Start Time', 'End Time', 'Status', 'Ticket Type', 'Price', 'Registered Attendees', 'Attended Attendees'])
+        
+        for event in events:
+            registered_count=EventRegistration.objects.filter(event=event).count()
+            attended_count=Attendance.objects.filter(event=event, is_present=True).count()
+            writer.writerow([event.title, event.category, event.date, event.start_time, event.end_time, event.creator_status, event.ticket_type, event.price, registered_count, attended_count])
+        return response
+    def export_to_excel(self, request):
+        creator = request.user
+        events = Event.objects.filter(creator=creator)
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet()
+
+        worksheet.write_row(0, 0, ['Title', 'Category', 'Date', 'Start Time', 'End Time', 'Status', 'Ticket Type', 'Price', 'Registered Attendees', 'Attended Attendees'])
+
+        row = 1
+        for event in events:
+            registered_count = EventRegistration.objects.filter(event=event).count()
+            attended_count = Attendance.objects.filter(event=event, is_present=True).count()
+            worksheet.write_row(row, 0, [
+                event.title,
+                event.category,
+                event.date,
+                event.start_time,
+                event.end_time,
+                event.creator_status,
+                event.ticket_type,
+                event.price,
+                registered_count,
+                attended_count,
+            ])
+            row += 1
+
+        workbook.close()
+        output.seek(0)
+
+        response = HttpResponse(output.read(), content_type='application/vnd.ms-excel')
+        response['Content-Disposition'] = 'attachment; filename="event_report.xlsx"'
+        return response
+
+    def export_to_pdf(self, request):
+        creator = request.user
+        events = Event.objects.filter(creator=creator)
+        
+        # Create the PDF buffer
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=1.5*cm,
+            leftMargin=1.5*cm,
+            topMargin=1.5*cm,
+            bottomMargin=1.5*cm
+        )
+        
+        # Prepare the data
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        # Add title
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=34,
+            spaceAfter=30,
+            alignment=1  # Center alignment
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle',
+            parent=styles['Normal'],
+            fontSize=12,
+            textColor=colors.gray,
+            alignment=1,  # Center alignment
+            spaceAfter=20,
+        )
+        
+        elements.append(Paragraph('Event Report', title_style))
+        elements.append(Paragraph(f'Generated on {datetime.now().strftime("%B %d, %Y")}', subtitle_style))
+        elements.append(Spacer(1, 20))
+        
+        # Prepare table data
+        headers = ['Title', 'Category', 'Date', 'Start Time', 'End Time', 
+                'Status', 'Ticket Type', 'Price', 'Registered', 'Attended']
+        
+        data = [headers]
+        
+        for event in events:
+            registered_count = EventRegistration.objects.filter(event=event).count()
+            attended_count = Attendance.objects.filter(event=event, is_present=True).count()
+            time_str = f"{event.start_time.strftime('%H:%M')}-{event.end_time.strftime('%H:%M')}"
+
+            data.append([
+                Paragraph(event.title, styles['Normal']),  # Allow title to wrap
+                event.category,
+                event.date.strftime('%Y-%m-%d'),
+                time_str,
+                event.creator_status,
+                event.ticket_type,
+                f"${event.price}" if event.price else "Free",
+                str(registered_count),
+                str(attended_count)
+            ])
+        
+        page_width = A4[0] - doc.leftMargin - doc.rightMargin
+        col_widths = [
+            page_width * 0.25,  # Title (25%)
+            page_width * 0.12,  # Category
+            page_width * 0.12,  # Date
+            page_width * 0.12,  # Time
+            page_width * 0.10,  # Status
+            page_width * 0.10,  # Type
+            page_width * 0.07,  # Price
+            page_width * 0.06,  # Registered
+            page_width * 0.06   # Attended
+        ]
+    
+        # Create table with specific column widths
+        table = Table(data, colWidths=col_widths, repeatRows=1)
+        
+        # Style the table
+        table.setStyle(TableStyle([
+            # Header styling
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f3f4f6')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('TOPPADDING', (0, 0), (-1, 0), 12),
+            
+            # Cell styling
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (-2, 0), (-1, -1), 'CENTER'),  # Center align the last two columns
+            
+            # Grid styling
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.grey),
+            
+            # Row styling
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+            
+            # Padding
+            ('TOPPADDING', (0, 1), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ]))
+    
+        elements.append(table)
+    
+        # Add footer with page numbers
+        def add_page_number(canvas, doc):
+            page_num = canvas.getPageNumber()
+            text = f"Page {page_num}"
+            canvas.saveState()
+            canvas.setFont('Helvetica', 9)
+            canvas.drawRightString(A4[0] - 2*cm, 2*cm, text)
+            canvas.restoreState()
+        
+        # Build PDF
+        doc.build(elements, onFirstPage=add_page_number, onLaterPages=add_page_number)
+        buffer.seek(0)
+        
+        # Create response
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="event_report.pdf"'
+        
+        return response
+class EventExportView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, format=None):
+        export_type = request.GET.get('export_type', 'csv')
+        
+        if export_type == 'csv':
+            return EventReportView().export_to_csv(request)
+        elif export_type == 'xlsx':
+            return EventReportView().export_to_excel(request)
+        elif export_type == 'pdf':
+            return EventReportView().export_to_pdf(request)
+        else:
+            return Response({'error': 'Invalid export type.'}, status=status.HTTP_400_BAD_REQUEST)
+
+class StreamingRoomView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, event_id):
+        try:
+            event = Event.objects.get(id=event_id)
+            
+            is_creator=event.creator==request.user
+            if is_creator:
+                # Start the stream when creator joins
+                event.start_stream()
+            serializer = StreamingSerializer(event)
+                
+            is_attendee = EventRegistration.objects.filter(
+                attendee=request.user,
+                event=event
+            ).exists() 
+                       
+            if not is_creator and not is_attendee:
+                return Response({'error': 'You are not authorized to join this event.'}, status=status.HTTP_403_FORBIDDEN)
+       
+            room_data={
+                'event_id': str(event.id),
+                'user_id': str(request.user.id),
+                'is_creator': is_creator,
+                'stream_data': serializer.data 
+            }
+            print("room data", room_data)
+            return Response(room_data, status=status.HTTP_200_OK)
+        except Event.DoesNotExist:
+            return Response({'error': 'Event not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, event_id):
+        try:
+            event = Event.objects.get(id=event_id)
+            if event.creator == request.user:
+                event.end_stream()
+                serializer = StreamingSerializer(event)
+                return Response(serializer.data)
+            return Response(
+                {'error': 'Only creator can end stream'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        except Event.DoesNotExist:
+            return Response(
+                {'error': 'Event not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+class StreamSignalingView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, event_id):
+        try:
+            event = Event.objects.get(id=event_id)
+            signal_type=request.data.get('type')
+            target_id=request.data.get('target')
+            
+            channel_layer=get_channel_layer()
+            
+            async_to_sync(channel_layer.group_send)(
+                f'stream_{event_id}',
+                {
+                    'type':'streaming_signal',
+                    'sender_id': str(request.user.id),
+                    'target_id': target_id,
+                    'signal_data':request.data
+                }
+            )
+            return Response({'status':'signal sent'}, status=status.HTTP_200_OK)
+        except Event.DoesNotExist:
+            return Response({'error': 'Event not found.'}, status=status.HTTP_404_NOT_FOUND)    

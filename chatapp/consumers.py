@@ -66,6 +66,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     self.room_group_name, 
                     response_data
                 )
+                
            
             elif message_type == 'message_read':
                 message_id = text_data_json.get('message_id')

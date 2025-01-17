@@ -1,9 +1,12 @@
 from io import BytesIO
+from django.utils import timezone
 import qrcode
 from authentication.models import AccountUser, BaseModel
 from django.db import models
 from django.core.files.base import ContentFile
 from datetime import datetime
+from django.db import transaction
+
 # Create your models here.
 class Event(BaseModel):
     EVENT_CATEGORY_CHOICES=[
@@ -70,15 +73,65 @@ class Event(BaseModel):
     
     # For online event
     meeting_link = models.URLField(max_length=500, blank=True, null=True)
-
+   
+    
     # Ticket
     ticket_type=models.CharField(max_length=10, choices=TICKET_TYPE_CHOICES, default='free')
     price=models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, default=0)
     total_tickets=models.PositiveIntegerField(default=100)
     
+    is_streaming = models.BooleanField(default=False)
+    stream_started_at = models.DateTimeField(null=True, blank=True)
+    stream_ended_at = models.DateTimeField(null=True, blank=True)
+    stream_key = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    viewer_count = models.PositiveIntegerField(default=0)
+    max_viewers = models.PositiveIntegerField(default=100)
+    stream_duration = models.DurationField(null=True, blank=True)
     
+    # Optional fields for stream configuration
+    stream_quality = models.CharField(
+        max_length=20,
+        choices=[
+            ('low', '480p'),
+            ('medium', '720p'),
+            ('high', '1080p')
+        ],
+        default='medium'
+    )
+    enable_chat = models.BooleanField(default=True)
+    enable_recording = models.BooleanField(default=False)
+
+    def start_stream(self):
+        from django.utils import timezone
+        if not self.is_streaming:
+            self.is_streaming = True
+            self.stream_started_at = timezone.now()
+            self.creator_status = 'ongoing'
+            self.save()
+
+    def end_stream(self):
+        from django.utils import timezone
+        if self.is_streaming:
+            self.is_streaming = False
+            self.stream_ended_at = timezone.now()
+            self.stream_duration = self.stream_ended_at - self.stream_started_at
+            self.creator_status = 'completed'
+            self.save()
+
+    def update_viewer_count(self, count):
+        self.viewer_count = min(count, self.max_viewers)
+        self.save()
+
+    class Meta:
+        # Add indexes for frequently queried fields
+        indexes = [
+            models.Index(fields=['is_streaming', 'creator_status']),
+            models.Index(fields=['stream_started_at']),
+        ]
+
     def __str__(self):
         return self.title
+    
 
 class EventRegistration(BaseModel):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="registrations")
@@ -182,3 +235,17 @@ class Feedback(BaseModel):
     
     def __str__(self):
         return f"Feedback by {self.attendee.email} on {self.event.title}"
+
+# class StreamSessions(models.Model):
+#     STREAM_STATUS_CHOICES = [
+#         ('active', 'Active'),
+#         ('ended', 'Ended'),
+#         ('failed', 'Failed'),
+#     ]
+#     event=models.ForeignKey(Event, on_delete=models.CASCADE)
+#     started_at=models.DateTimeField(auto_now_add=True)
+#     ended_at=models.DateTimeField(null=True, blank=True)
+#     status=models.CharField(max_length=20, choices=STREAM_STATUS_CHOICES, default='active')
+    
+#     def __str__(self):
+#         return f"Stream session for {self.event.title}"
