@@ -36,10 +36,11 @@ class GoogleAuthView(APIView):
             # Verify the Google token
             idinfo = id_token.verify_oauth2_token(token, Request(), config('SOCIAL_AUTH_GOOGLE_OAUTH2_KEY'))
             email = idinfo.get("email")
-            username = idinfo.get("username")
             first_name = idinfo.get("given_name")
             last_name = idinfo.get("family_name")
 
+            username = email.split('@')[0]
+            base_username = username
             # Check if the user already exists
             user, created = AccountUser.objects.get_or_create(email=email, defaults={
                 'username': username,

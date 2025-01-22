@@ -1,4 +1,4 @@
-# celery.py
+# celery_app.py
 
 from __future__ import absolute_import, unicode_literals
 import os

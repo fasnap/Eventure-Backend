@@ -97,23 +97,23 @@ WSGI_APPLICATION = 'eventure.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': config('DATABASE_NAME'),
-#         'USER': config('DATABASE_USER'),
-#         'PASSWORD': config('DATABASE_PASSWORD'),
-#         'HOST': config('DATABASE_HOST'),
-#         'PORT': config('DATABASE_PORT', default='5432'),
-#     }
-# }
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DATABASE_NAME'),
+        'USER': config('DATABASE_USER'),
+        'PASSWORD': config('DATABASE_PASSWORD'),
+        'HOST': config('DATABASE_HOST','db'),
+        'PORT': config('DATABASE_PORT', default='5432'),
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 
 
 
@@ -229,7 +229,8 @@ SOCIALACCOUNT_PROVIDERS = {
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # URL for Redis (default host and port)
+CELERY_BROKER_URL = 'redis://redis:6379/0'  # URL for Redis (default host and port)
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Kolkata'
@@ -240,7 +241,7 @@ RAZORPAY_KEY_SECRET=config('RAZORPAY_KEY_SECRET')
 CELERY_BEAT_SCHEDULE={
     'send-email-reminders-daily':{
         'task':'events.tasks.send_email_reminders',
-        'schedule':crontab(hour=23, minute=35)
+        'schedule':crontab(hour=15, minute=25)
     }
 }
 
@@ -257,7 +258,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND":"channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts":[("127.0.0.1", 6379)],
+            "hosts":[("redis", 6379)],
         }
     }
 }
@@ -278,3 +279,21 @@ CHANNEL_LAYERS = {
 #         },
 #     },
 # }
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}

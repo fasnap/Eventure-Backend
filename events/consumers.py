@@ -121,7 +121,6 @@ class StreamingConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
             data['sender_id'] = str(self.user.id)
-            
             # Forward the signal to the target peer
             target_id = data.get('target')
             if target_id:

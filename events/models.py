@@ -71,15 +71,12 @@ class Event(BaseModel):
     admin_status=models.CharField(max_length=100, choices=ADMIN_STATUS_CHOICES, null=True, blank=True, default='pending')
     creator_status=models.CharField(max_length=100, choices=CREATOR_STATUS_CHOICES, null=True, blank=True, default='pending')
     
-    # For online event
-    meeting_link = models.URLField(max_length=500, blank=True, null=True)
-   
-    
     # Ticket
     ticket_type=models.CharField(max_length=10, choices=TICKET_TYPE_CHOICES, default='free')
     price=models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, default=0)
     total_tickets=models.PositiveIntegerField(default=100)
-    
+    available_tickets = models.PositiveIntegerField(default=100,null=True, blank=True)  
+
     is_streaming = models.BooleanField(default=False)
     stream_started_at = models.DateTimeField(null=True, blank=True)
     stream_ended_at = models.DateTimeField(null=True, blank=True)
@@ -236,16 +233,3 @@ class Feedback(BaseModel):
     def __str__(self):
         return f"Feedback by {self.attendee.email} on {self.event.title}"
 
-# class StreamSessions(models.Model):
-#     STREAM_STATUS_CHOICES = [
-#         ('active', 'Active'),
-#         ('ended', 'Ended'),
-#         ('failed', 'Failed'),
-#     ]
-#     event=models.ForeignKey(Event, on_delete=models.CASCADE)
-#     started_at=models.DateTimeField(auto_now_add=True)
-#     ended_at=models.DateTimeField(null=True, blank=True)
-#     status=models.CharField(max_length=20, choices=STREAM_STATUS_CHOICES, default='active')
-    
-#     def __str__(self):
-#         return f"Stream session for {self.event.title}"

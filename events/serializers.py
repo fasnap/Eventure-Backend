@@ -14,7 +14,7 @@ class EventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'creator', 'title', 'category', 'event_type', 'date', 'start_time', 'end_time', 'creator_status', 'admin_status',
             'description', 'image', 'venue', 'country', 'state', 'district', 'is_created', 'is_approved', 'ticket_type', 'price', 'total_tickets', 
-            'created_at', 'updated_at', 'latitude', 'longitude', 'location', 'meeting_link','is_streaming']
+            'created_at', 'updated_at', 'latitude', 'longitude', 'location','is_streaming']
         read_only_fields = ['creator','is_streaming']
     def validate(self, data):
         user = self.context['request'].user

@@ -14,3 +14,14 @@ django-allauth
 requests
 cryptography
 google-auth
+daphne
+channels
+python-jose
+qrcode
+django-celery-results
+django-celery-beat
+reportlab
+xlsxwriter
+razorpay
+channels_redis
+

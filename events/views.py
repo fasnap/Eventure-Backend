@@ -1,5 +1,5 @@
 import csv
-from datetime import datetime
+from datetime import date, datetime
 from functools import partial
 from reportlab.lib.pagesizes import letter
 from io import BytesIO
@@ -51,10 +51,13 @@ class EventCreateView(APIView):
         if serializer.is_valid():
             event=serializer.save(creator=user, is_created=True)
             event.creator_status='created'
+            event.available_tickets=event.total_tickets
             event.save()
+            
             # Send notification to admin group after the event is created
             channel_layer = get_channel_layer()
             message = f"New event '{event.title}' is waiting for admin approval."
+            
             # Create a notification in the database for the admin
             notification = Notification.objects.create(
                 user_id=user.id,  # Assuming the admin has an `id`
@@ -175,7 +178,7 @@ class RegisterForEventView(APIView):
         try:
             
             event = Event.objects.get(id=event_id, ticket_type="free")
-            if event.total_tickets <= 0:
+            if event.available_tickets <= 0:
                 return Response({"error": "No tickets available."}, status=status.HTTP_400_BAD_REQUEST)
             
             # Check if already registered
@@ -202,7 +205,7 @@ class RegisterForEventView(APIView):
                     fail_silently=False,
                 )
                 # Decrement ticket count
-                event.total_tickets -= 1
+                event.available_tickets -= 1
                 event.save()
                
                 return Response({"message": "Successfully registered!"}, status=status.HTTP_201_CREATED)
@@ -216,7 +219,7 @@ class AttendeeRegisteredEventsAPIView(APIView):
     
     def get(self, request):
         user=request.user
-        registrations=EventRegistration.objects.filter(attendee=user)
+        registrations=EventRegistration.objects.filter(attendee=user).order_by('-created_at')
         serializer=AttendeeEventsSerializer(registrations, many=True)
         return Response(serializer.data)
     
@@ -233,7 +236,7 @@ class NotificationListView(APIView):
     permission_classes = [IsAuthenticated]
    
     def get(self, request):
-        notifications = Notification.objects.all()
+        notifications = Notification.objects.all().order_by('-created_at')
         serializer = NotificationSerializer(notifications, many=True)
         return Response(serializer.data)
     
@@ -315,7 +318,7 @@ class RegisterPaidEventView(APIView):
             )
             
             # Decrement ticket count
-            event.total_tickets -= 1
+            event.available_tickets -= 1
             event.save()
        
             return Response({"message": "Successfully registered!"}, status=status.HTTP_201_CREATED)
@@ -783,6 +786,7 @@ class StreamingRoomView(APIView):
                 {'error': 'Event not found'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+            
 class StreamSignalingView(APIView):
     permission_classes = [IsAuthenticated]
     

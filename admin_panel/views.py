@@ -140,6 +140,7 @@ class EventApprovalView(APIView):
             event.is_approved=True
             event.admin_status='approved'
             event.creator_status='upcoming'
+            event.available_tickets=event.total_tickets
             event.save()
             return Response({'message':'Event approved'}, status=status.HTTP_200_OK)
         except Event.DoesNotExist:
