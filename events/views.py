@@ -341,6 +341,7 @@ def mark_attendance(request):
         manager=AttendanceManager()
         result=manager.scan_qr_and_mark_attendance(qr_code_data, event_id, event_creator)
         if "error" in result:
+            print("error in qr is ", result)
             return JsonResponse(result, status=400)
         return JsonResponse(result, status=200)
     except json.JSONDecodeError:
