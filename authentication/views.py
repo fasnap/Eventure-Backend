@@ -118,6 +118,7 @@ class LoginView(APIView):
 class AttendeeProfileView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
+        print("Request")
         try:
             attendee_profile = AttendeeProfile.objects.get(user=request.user)
             serializer = AttendeeProfileSerializer(attendee_profile)
