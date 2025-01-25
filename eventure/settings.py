@@ -28,7 +28,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'eventure.fasna.xyz']
 
 
 # Application definition
@@ -179,7 +179,11 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER')   # Gmail address
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')  # Gmail password or app password
 
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    'https://eventure.fasna.xyz',
+    'https://eventurefrontend.vercel.app',
+]
 CORS_ALLOW_CREDENTIALS = True
 
 SIMPLE_JWT = {

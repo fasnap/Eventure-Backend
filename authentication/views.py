@@ -150,6 +150,7 @@ class CreatorAccountSetupView(APIView):
             return Response({"error": "Creator profile not found."}, status=status.HTTP_404_NOT_FOUND)
         
     def put(self, request):
+        print("request received", request.user)
         try:
             user=request.user
             creator_profile=CreatorProfile.objects.get(user=request.user)
@@ -178,10 +179,15 @@ class CreatorAccountSetupView(APIView):
                         'notification_id': notification.id
                     }
                 )
+                print("success")
+
                 return Response({"message": "Account setup request sent to admin for verification."}, status=status.HTTP_200_OK)
+            print("error", serializer.errors)
+
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         except CreatorProfile.DoesNotExist:
+            print("profile not found")
             return Response({"error": "Creator profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
 class CreatorProfileView(APIView):
