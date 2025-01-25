@@ -151,11 +151,6 @@ class CreatorAccountSetupView(APIView):
             return Response({"error": "Creator profile not found."}, status=status.HTTP_404_NOT_FOUND)
         
     def put(self, request):
-        print("request received", request.user)
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
         try:
             user=request.user
             creator_profile=CreatorProfile.objects.get(user=request.user)
@@ -183,14 +178,8 @@ class CreatorAccountSetupView(APIView):
                         'message': message,
                         'notification_id': notification.id
                     }
-<<<<<<< Updated upstream
-                )
-                print("success")
-
-=======
-                ) 
-                print("success")
->>>>>>> Stashed changes
+               )
+       
                 return Response({"message": "Account setup request sent to admin for verification."}, status=status.HTTP_200_OK)
             print("error", serializer.errors)
 
@@ -198,10 +187,6 @@ class CreatorAccountSetupView(APIView):
         
         except CreatorProfile.DoesNotExist:
             print("profile not found")
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
             return Response({"error": "Creator profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
 class CreatorProfileView(APIView):
