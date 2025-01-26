@@ -349,6 +349,43 @@ def mark_attendance(request):
     except Exception as e:
         return JsonResponse({"error": f"An unexpected error occurred: {str(e)}"}, status=500)
 
+@api_view(['POST']) 
+def mark_stream_attendance(request):
+    try:
+        event_id=request.data.get('eventId')
+        print("Event id ", event_id)
+        user=request.user
+        print("User ", user)
+        event=Event.objects.get(id=event_id, event_type='online', is_streaming=True)
+        if not event:
+            return JsonResponse({"error": "Event not found or not streaming."}, status=404)
+        
+        registration = EventRegistration.objects.filter(event=event, attendee=user).first()
+        if not registration:
+            return JsonResponse({"error": "User not registered for this event."}, status=404)
+        
+        attendance, created = Attendance.objects.get_or_create(
+            event=event, 
+            attendee=user, 
+            registration=registration,
+            defaults={
+                'is_present':True, 
+                'check_in_time':timezone.now()
+            }
+        )
+        
+        if not created and attendance.is_present:
+            return JsonResponse({"error": "User is already marked present for this event."}, status=400)
+        if not attendance.is_present:
+            attendance.is_present = True
+            attendance.check_in_time = timezone.now()
+            attendance.save()
+        
+        return JsonResponse({"message": "Attendance marked successfully."}, status=200)
+    except Exception as e:
+        print("error instream attendance", str(e))
+        return JsonResponse({"error": f"An unexpected error occurred: {str(e)}"}, status=500)
+    
 class EventStatisticsView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request,*args, **kwargs):
@@ -773,16 +810,18 @@ class StreamingRoomView(APIView):
 
     def delete(self, request, event_id):
         try:
+            print("event is ", event_id)
             event = Event.objects.get(id=event_id)
             if event.creator == request.user:
+                print("yes")
                 event.end_stream()
                 serializer = StreamingSerializer(event)
+                
                 return Response(serializer.data)
-            return Response(
-                {'error': 'Only creator can end stream'}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-        except Event.DoesNotExist:
+            return Response({'message': 'Left the room'})
+
+        except Exception as e:
+            print("error event not found", e)
             return Response(
                 {'error': 'Event not found'}, 
                 status=status.HTTP_404_NOT_FOUND

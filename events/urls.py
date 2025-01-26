@@ -1,6 +1,6 @@
 # api/urls.py
 from django.urls import path
-from .views import AllFeedbackView,AttendedEventsListView, EventAttendanceListView, EventExportView, EventRegisteredUsersListView, EventReportView, EventStatisticsView, EventUpdateStatusView, StreamSignalingView, StreamingRoomView, SubmitFeedbackView, UpdateFeedbackView, mark_attendance,CreateOrderView,NotificationListView,AttendeeRegisteredEventsAPIView, AttendeeSingleEventView, EventCreateView,AttendeeEventsListView, EventCategoryView, CreatorEventListView, MarkNotificationViewedView, RegisterForEventView, RegisterPaidEventView
+from .views import mark_stream_attendance,AllFeedbackView,AttendedEventsListView, EventAttendanceListView, EventExportView, EventRegisteredUsersListView, EventReportView, EventStatisticsView, EventUpdateStatusView, StreamSignalingView, StreamingRoomView, SubmitFeedbackView, UpdateFeedbackView, mark_attendance,CreateOrderView,NotificationListView,AttendeeRegisteredEventsAPIView, AttendeeSingleEventView, EventCreateView,AttendeeEventsListView, EventCategoryView, CreatorEventListView, MarkNotificationViewedView, RegisterForEventView, RegisterPaidEventView
 
 urlpatterns = [
     path('create_event/', EventCreateView.as_view(), name='create-event'),
@@ -18,6 +18,7 @@ urlpatterns = [
     path('create-order/<int:event_id>/', CreateOrderView.as_view(), name='create_order'),
     path('registerPaidEvent/<int:event_id>/', RegisterPaidEventView.as_view(), name='register_paid_event'),
     path('mark-attendance/', mark_attendance, name='mark-attendance'),
+    path('mark-stream-attendance/', mark_stream_attendance, name='mark-stream-attendance'),
     path('event-statistics/', EventStatisticsView.as_view(), name='event-statistics'),
     path('<int:event_id>/attendance/', EventAttendanceListView.as_view(), name='event_attendance'),
     path('<int:event_id>/registered_users/', EventRegisteredUsersListView.as_view(), name='registered_users'),
