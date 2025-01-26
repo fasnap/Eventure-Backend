@@ -81,7 +81,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
     attendee_username=serializers.CharField(source="attendee.username", read_only=True)
     class Meta:
         model = Feedback
-        fields = ['attendee','event','rating', 'comment', 'attendee_username']
+        fields = ['id', 'attendee','event','rating', 'comment', 'attendee_username']
         read_only_fields = ['attendee', 'event']
   
 class StreamingSerializer(serializers.ModelSerializer):

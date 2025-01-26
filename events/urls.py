@@ -1,6 +1,6 @@
 # api/urls.py
 from django.urls import path
-from .views import mark_stream_attendance,AllFeedbackView,AttendedEventsListView, EventAttendanceListView, EventExportView, EventRegisteredUsersListView, EventReportView, EventStatisticsView, EventUpdateStatusView, StreamSignalingView, StreamingRoomView, SubmitFeedbackView, UpdateFeedbackView, mark_attendance,CreateOrderView,NotificationListView,AttendeeRegisteredEventsAPIView, AttendeeSingleEventView, EventCreateView,AttendeeEventsListView, EventCategoryView, CreatorEventListView, MarkNotificationViewedView, RegisterForEventView, RegisterPaidEventView
+from .views import DeleteFeedbackView, mark_stream_attendance,AllFeedbackView,AttendedEventsListView, EventAttendanceListView, EventExportView, EventRegisteredUsersListView, EventReportView, EventStatisticsView, EventUpdateStatusView, StreamSignalingView, StreamingRoomView, SubmitFeedbackView, UpdateFeedbackView, mark_attendance,CreateOrderView,NotificationListView,AttendeeRegisteredEventsAPIView, AttendeeSingleEventView, EventCreateView,AttendeeEventsListView, EventCategoryView, CreatorEventListView, MarkNotificationViewedView, RegisterForEventView, RegisterPaidEventView
 
 urlpatterns = [
     path('create_event/', EventCreateView.as_view(), name='create-event'),
@@ -25,11 +25,13 @@ urlpatterns = [
     path('<int:event_id>/update-status/', EventUpdateStatusView.as_view(), name='update_status'),
     path('attendee/attended_events/', AttendedEventsListView.as_view(), name='attended_events'),
     path('<int:event_id>/feedback/submit/', SubmitFeedbackView.as_view(), name='submit_feedback'),
-    path('<int:feedback_id>/update/feedback/', UpdateFeedbackView.as_view(), name='update_feedback'),
+    path('feedback/<int:feedback_id>/update/', UpdateFeedbackView.as_view(), name='update_feedback'),
     path('<int:event_id>/feedbacks/', AllFeedbackView.as_view(), name='all_feedbacks'),
     path('event-report/', EventReportView.as_view(), name='event_report'),
     path('event-export/', EventExportView.as_view(), name='event_export'),
     path('<int:event_id>/stream/', StreamingRoomView.as_view(), name='streaming-room'),
     path('<int:event_id>/signal/', StreamSignalingView.as_view(), name='streaming-signal'),
+    path('feedback/<int:feedback_id>/delete/', DeleteFeedbackView.as_view(), name='update_feedback'),
+
 
 ]

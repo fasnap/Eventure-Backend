@@ -471,6 +471,9 @@ class EventUpdateStatusView(APIView):
         if new_status == "ongoing" and event.creator_status != "upcoming":
             return Response({"detail": "Event must be upcoming to mark as ongoing."}, status=status.HTTP_400_BAD_REQUEST)
         print("new status is ",new_status)
+        if new_status=="completed" and event.event_type=='online':
+            event.is_streaming=False
+            
         event.creator_status = new_status
         event.save()
         return Response({"detail": f"Event status updated to {new_status}"}, status=status.HTTP_200_OK)
@@ -538,7 +541,19 @@ class AllFeedbackView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Event.DoesNotExist:
             return Response({"error": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+class DeleteFeedbackView(APIView):
+    permission_classes = [IsAuthenticated]
+    def delete(self, request, feedback_id):
+        attendee = request.user
+        try:
+            feedback = Feedback.objects.get(id=feedback_id, attendee=attendee)
+            feedback.delete()
+            return Response({"message": "Feedback deleted successfully."}, status=status.HTTP_200_OK)
+        except Feedback.DoesNotExist:
+            return Response(
+                {"error": "Feedback not found or not authorized."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 class EventReportView(APIView):
     permission_classes = [IsAuthenticated]
     
