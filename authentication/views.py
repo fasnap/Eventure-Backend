@@ -298,7 +298,7 @@ class CreatorListView(APIView):
             })
             print("creator data", creator_data)
 
-            return Response(creator_data, status=status.HTTP_200_OK)
+        return Response(creator_data, status=status.HTTP_200_OK)
 
 class CreatorDetailsView(APIView):
     def get(self, request, creator_id):
