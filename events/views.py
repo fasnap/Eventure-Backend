@@ -375,7 +375,7 @@ def mark_stream_attendance(request):
         )
         
         if not created and attendance.is_present:
-            return JsonResponse({"error": "User is already marked present for this event."}, status=400)
+            return JsonResponse({"message": "Already marked present.", "already_present": True}, status=200)
         if not attendance.is_present:
             attendance.is_present = True
             attendance.check_in_time = timezone.now()
