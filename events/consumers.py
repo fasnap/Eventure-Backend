@@ -93,7 +93,8 @@ class StreamingConsumer(AsyncWebsocketConsumer):
                 'type': 'streaming_signal',
                 'message': {
                     'type': 'join',
-                    'sender_id': str(self.user.id)
+                    'sender_id': str(self.user.id),
+                    'username': self.user.username if hasattr(self.user, 'username') else 'Anonymous'
                 }
             }
         )
@@ -106,7 +107,8 @@ class StreamingConsumer(AsyncWebsocketConsumer):
                     'type': 'streaming_signal',
                     'message': {
                         'type': 'peer_disconnected',
-                        'sender_id': str(self.user.id)
+                        'sender_id': str(self.user.id),
+                        'username': self.user.username if hasattr(self.user, 'username') else 'Anonymous'
                     }
                 }
             )
@@ -121,6 +123,9 @@ class StreamingConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
             data['sender_id'] = str(self.user.id)
+            if 'username' not in data:
+                data['username'] = self.user.username if hasattr(self.user, 'username') else 'Anonymous'
+            
             # Forward the signal to the target peer
             target_id = data.get('target')
             if target_id:
