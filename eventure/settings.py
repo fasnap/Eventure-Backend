@@ -607,17 +607,3 @@ CSRF_COOKIE_SECURE = True
 #     'x-csrftoken',
 #     'x-requested-with',
 # ]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
