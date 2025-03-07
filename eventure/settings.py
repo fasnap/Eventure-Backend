@@ -293,6 +293,8 @@ CSRF_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
+
 # """
 # Django settings for eventure project.
 
