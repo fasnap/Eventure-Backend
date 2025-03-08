@@ -182,6 +182,8 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     'https://eventure.fasna.xyz',
     'https://eventurefrontend.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:8000',
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -286,12 +288,16 @@ LOGGING = {
 CSRF_TRUSTED_ORIGINS = [
     'https://eventure.fasna.xyz',
     'https://eventurefrontend.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:8000',
 ]
 
 SESSION_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SAMESITE = 'None'
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 # """
 # Django settings for eventure project.
@@ -607,17 +613,3 @@ CSRF_COOKIE_SECURE = True
 #     'x-csrftoken',
 #     'x-requested-with',
 # ]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
